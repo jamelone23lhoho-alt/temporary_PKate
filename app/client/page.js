@@ -7,6 +7,17 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import Toast from '@/components/Toast';
 import { hasPermission } from '@/lib/permissions';
 
+function F({ label, req, children }) {
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>
+        {label}{req && <span style={{ color: 'var(--danger)' }}> *</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
 export default function ClientPage() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -106,15 +117,6 @@ export default function ClientPage() {
     setDetailOpen(false);
     loadData();
   };
-
-  const F = ({ label, req, children }) => (
-    <div className="mb-4">
-      <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>
-        {label}{req && <span style={{ color: 'var(--danger)' }}> *</span>}
-      </label>
-      {children}
-    </div>
-  );
 
   const SectionTitle = ({ children }) => (
     <div className="text-sm font-bold mt-5 mb-3 pt-4 border-t" style={{ color: 'var(--danger)', borderColor: 'var(--border)' }}>{children}</div>

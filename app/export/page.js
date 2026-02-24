@@ -7,6 +7,15 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import Toast from '@/components/Toast';
 import { hasPermission } from '@/lib/permissions';
 
+function F({ label, children }) {
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
 export default function ExportPage() {
   const [exports, setExports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -120,13 +129,6 @@ export default function ExportPage() {
     const dt = new Date(d);
     return isNaN(dt) ? d : `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
   };
-
-  const F = ({ label, children }) => (
-    <div className="mb-4">
-      <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>{label}</label>
-      {children}
-    </div>
-  );
 
   const inputCls = "w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all";
   const inputStyle = { border: '1.5px solid var(--border)' };

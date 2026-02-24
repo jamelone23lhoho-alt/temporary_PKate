@@ -35,6 +35,23 @@ input, select, textarea, button {
   font-family: inherit;
 }
 
+input, select, textarea {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  caret-color: #1a1a1a;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #a89080 !important;
+  box-shadow: 0 0 0 3px rgba(168, 144, 128, 0.12);
+  outline: none;
+}
+
+input[readonly] {
+  background: #f5f0eb !important;
+  color: #a09890 !important;
+}
+
 .fade-in {
   animation: fadeIn 0.3s ease;
 }
@@ -94,3 +111,24 @@ input, select, textarea, button {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--beige); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--latte); }
+
+table {
+  background: #ffffff;
+}
+
+thead th {
+  background: #f5f0eb;
+  color: #6b6560;
+}
+
+tbody td {
+  color: #1a1a1a;
+}
+
+tbody tr:hover {
+  background: #f5f0eb;
+}
+
+.bg-white {
+  background-color: #ffffff !important;
+}
