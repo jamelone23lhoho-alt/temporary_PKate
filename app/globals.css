@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --black: #1a1a1a;
+  --white: #ffffff;
+  --grey: #b0b0b0;
+  --beige: #e8ddd3;
+  --latte: #a89080;
+  --cream: #f5f0eb;
+  --bg: #f9f6f2;
+  --accent: #8b7355;
+  --danger: #c0392b;
+  --success: #27ae60;
+  --info: #2c6ea0;
+  --border: #e8e2dc;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b6560;
+  --text-muted: #a09890;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Poppins', 'Noto Sans Thai', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateY(20px); }
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--latte);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 14px 24px;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 3000;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.5s forwards;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+.modal-animate {
+  animation: modalIn 0.25s ease;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--beige); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--latte); }
