@@ -77,7 +77,7 @@ export default function DashboardPage() {
             <option value="">All Clients</option>
             {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
-          <button onClick={resetFilter} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:-translate-y-0.5" style={{ background: 'var(--latte)', color: 'white' }}>All</button>
+          <button onClick={resetFilter} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:-translate-y-0.5" style={{ background: 'var(--latte)', color: 'white' }}>Reset</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
