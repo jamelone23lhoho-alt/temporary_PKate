@@ -167,6 +167,28 @@ tbody tr:hover { background: #f5f0eb; }
 .flatpickr-current-month input.cur-year {
   color: white !important;
   font-weight: 600 !important;
+  background: transparent !important;
+}
+
+.flatpickr-current-month .numInputWrapper span {
+  border: none !important;
+}
+
+.flatpickr-current-month .numInputWrapper span:after {
+  border-bottom-color: white !important;
+}
+
+.flatpickr-current-month .numInputWrapper span.arrowUp:after {
+  border-bottom-color: white !important;
+}
+
+.flatpickr-current-month .numInputWrapper span.arrowDown:after {
+  border-top-color: white !important;
+}
+
+.flatpickr-current-month .numInputWrapper:hover {
+  background: rgba(255,255,255,0.1) !important;
+  border-radius: 4px;
 }
 
 .flatpickr-weekdays {
@@ -228,4 +250,52 @@ span.flatpickr-weekday {
 .btn-invoice-hover:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(44, 110, 160, 0.3);
+}
+
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  animation: fadeIn 0.2s ease;
+}
+
+.lightbox-overlay img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.payment-toggle {
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+}
+
+.payment-toggle button {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white !important;
+  color: var(--text-muted) !important;
+}
+
+.payment-toggle button.active-yes {
+  background: var(--success) !important;
+  color: white !important;
+}
+
+.payment-toggle button.active-no {
+  background: var(--danger) !important;
+  color: white !important;
 }
