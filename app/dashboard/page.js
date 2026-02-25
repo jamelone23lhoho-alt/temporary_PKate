@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import DatePicker from '@/components/DatePicker';
+import LoadingOverlay from '@/components/LoadingOverlay';
 import { hasPermission } from '@/lib/permissions';
 
 const fmt = (n) => (parseFloat(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -14,6 +16,7 @@ export default function DashboardPage() {
   const [client, setClient] = useState('');
   const [clients, setClients] = useState([]);
   const [role, setRole] = useState('');
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -22,9 +25,7 @@ export default function DashboardPage() {
     loadClients();
   }, []);
 
-  useEffect(() => {
-    loadDash();
-  }, [dateFrom, dateTo, client]);
+  useEffect(() => { loadDash(); }, [dateFrom, dateTo, client]);
 
   const loadClients = async () => {
     const res = await fetch('/api/clients');
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   };
 
   const loadDash = async () => {
+    setLoading(true);
     const params = new URLSearchParams();
     if (dateFrom) params.set('from', dateFrom);
     if (dateTo) params.set('to', dateTo);
@@ -41,13 +43,10 @@ export default function DashboardPage() {
     const data = await res.json();
     setTotalTHB(data.totalTHB || 0);
     setTotalMNT(data.totalMNT || 0);
+    setLoading(false);
   };
 
-  const resetFilter = () => {
-    setDateFrom('');
-    setDateTo('');
-    setClient('');
-  };
+  const resetFilter = () => { setDateFrom(''); setDateTo(''); setClient(''); };
 
   const quickItems = [
     { label: 'Export', icon: 'local_shipping', path: '/export', perm: 'export_view' },
@@ -57,24 +56,11 @@ export default function DashboardPage() {
     { label: 'Users', icon: 'admin_panel_settings', path: '/users', perm: 'users_view' },
   ];
 
-  const cardStyle = {
-    padding: 24,
-    borderRadius: 12,
-    borderLeft: '4px solid',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-  };
-
-  const inputStyle = {
-    padding: '8px 14px',
-    border: '1.5px solid var(--border)',
-    borderRadius: 8,
-    fontSize: 13,
-    background: 'white',
-    outline: 'none',
-  };
+  const cardStyle = { padding: 24, borderRadius: 12, borderLeft: '4px solid', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' };
 
   return (
     <AppShell>
+      <LoadingOverlay show={loading} />
       <div className="fade-in">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Dashboard</h2>
@@ -83,37 +69,17 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3 mb-5 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>From</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              style={inputStyle}
-            />
+            <div style={{ width: 160 }}><DatePicker value={dateFrom} onChange={setDateFrom} placeholder="Start date" /></div>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>To</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              style={inputStyle}
-            />
+            <div style={{ width: 160 }}><DatePicker value={dateTo} onChange={setDateTo} placeholder="End date" /></div>
           </div>
-          <select
-            value={client}
-            onChange={(e) => setClient(e.target.value)}
-            style={inputStyle}
-          >
+          <select value={client} onChange={(e) => setClient(e.target.value)} className="px-3.5 py-2.5 rounded-lg text-sm outline-none" style={{ border: '1.5px solid var(--border)', background: 'white' }}>
             <option value="">All Clients</option>
             {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
-          <button
-            onClick={resetFilter}
-            className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:-translate-y-0.5"
-            style={{ background: 'var(--latte)', color: 'white' }}
-          >
-            All
-          </button>
+          <button onClick={resetFilter} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:-translate-y-0.5" style={{ background: 'var(--latte)', color: 'white' }}>All</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -128,19 +94,11 @@ export default function DashboardPage() {
         </div>
 
         <h3 className="text-base font-bold mb-4">Quick Access</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
           {quickItems.map(item => (
             hasPermission(role, item.perm) && (
-              <div
-                key={item.label}
-                onClick={() => router.push(item.path)}
-                className="rounded-xl p-6 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md"
-                style={{ background: 'white', border: '1.5px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-              >
-                <div
-                  className="rounded-full flex items-center justify-center mx-auto mb-3"
-                  style={{ background: 'var(--beige)', width: 52, height: 52, color: 'var(--accent)' }}
-                >
+              <div key={item.label} onClick={() => router.push(item.path)} className="rounded-xl p-6 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md" style={{ background: 'white', border: '1.5px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div className="rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--beige)', width: 52, height: 52, color: 'var(--accent)' }}>
                   <span className="material-icons-outlined" style={{ fontSize: 24 }}>{item.icon}</span>
                 </div>
                 <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
