@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import DatePicker from '@/components/DatePicker';
@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [clients, setClients] = useState([]);
   const [role, setRole] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   useEffect(() => {
@@ -27,11 +28,7 @@ export default function DashboardPage() {
 
   useEffect(() => { loadDash(); }, [dateFrom, dateTo, client]);
 
-  const loadClients = async () => {
-    const res = await fetch('/api/clients');
-    const data = await res.json();
-    setClients(Array.isArray(data) ? data : []);
-  };
+  const loadClients = async () => { const res = await fetch('/api/clients'); const data = await res.json(); setClients(Array.isArray(data) ? data : []); };
 
   const loadDash = async () => {
     setLoading(true);
@@ -48,6 +45,8 @@ export default function DashboardPage() {
 
   const resetFilter = () => { setDateFrom(''); setDateTo(''); setClient(''); };
 
+  const goTo = (path) => { startTransition(() => { router.push(path); }); };
+
   const quickItems = [
     { label: 'Export', icon: 'local_shipping', path: '/export', perm: 'export_view' },
     { label: 'Export Form', icon: 'receipt_long', path: '/export-form', perm: 'export_view' },
@@ -57,14 +56,13 @@ export default function DashboardPage() {
   ];
 
   const cardStyle = { padding: 24, borderRadius: 12, borderLeft: '4px solid', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' };
+  const miniSpinner = <div className="flex items-center gap-2"><div className="spinner" style={{ width: 22, height: 22, borderWidth: 2 }} /></div>;
 
   return (
     <AppShell>
-      <LoadingOverlay show={loading} />
+      <LoadingOverlay show={isPending} message="Loading..." />
       <div className="fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Dashboard</h2>
-        </div>
+        <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
 
         <div className="flex items-center gap-3 mb-5 flex-wrap">
           <div className="flex items-center gap-2">
@@ -85,11 +83,11 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div style={{ ...cardStyle, borderColor: 'var(--info)', background: 'white' }}>
             <div className="text-sm font-semibold mb-2" style={{ color: 'var(--info)' }}>Total Sales (THB)</div>
-            <div className="text-3xl font-bold" style={{ color: 'var(--black)' }}>{fmt(totalTHB)}</div>
+            {loading ? miniSpinner : <div className="text-3xl font-bold" style={{ color: 'var(--black)' }}>{fmt(totalTHB)}</div>}
           </div>
           <div style={{ ...cardStyle, borderColor: 'var(--danger)', background: 'white' }}>
             <div className="text-sm font-semibold mb-2" style={{ color: 'var(--danger)' }}>Total Sales (MNT)</div>
-            <div className="text-3xl font-bold" style={{ color: 'var(--black)' }}>{fmt(totalMNT)}</div>
+            {loading ? miniSpinner : <div className="text-3xl font-bold" style={{ color: 'var(--black)' }}>{fmt(totalMNT)}</div>}
           </div>
         </div>
 
@@ -97,7 +95,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
           {quickItems.map(item => (
             hasPermission(role, item.perm) && (
-              <div key={item.label} onClick={() => router.push(item.path)} className="rounded-xl p-6 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md" style={{ background: 'white', border: '1.5px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div key={item.label} onClick={() => goTo(item.path)} className="rounded-xl p-6 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md" style={{ background: 'white', border: '1.5px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <div className="rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--beige)', width: 52, height: 52, color: 'var(--accent)' }}>
                   <span className="material-icons-outlined" style={{ fontSize: 24 }}>{item.icon}</span>
                 </div>

@@ -1,14 +1,13 @@
 'use client';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import LoadingOverlay from '@/components/LoadingOverlay';
 
 export default function AppShell({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [role, setRole] = useState('');
-  const [navigating, setNavigating] = useState(false);
-  const prevPath = useRef(pathname);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const stored = sessionStorage.getItem('tolun_user');
@@ -16,17 +15,11 @@ export default function AppShell({ children }) {
     setRole(JSON.parse(stored).role);
   }, [router]);
 
-  useEffect(() => {
-    if (prevPath.current !== pathname) {
-      setNavigating(false);
-      prevPath.current = pathname;
-    }
-  }, [pathname]);
-
   const nav = (path) => {
     if (path !== pathname) {
-      setNavigating(true);
-      router.push(path);
+      startTransition(() => {
+        router.push(path);
+      });
     }
   };
 
@@ -37,7 +30,7 @@ export default function AppShell({ children }) {
 
   return (
     <div>
-      <LoadingOverlay show={navigating} message="Loading..." />
+      <LoadingOverlay show={isPending} message="Loading..." />
       <div
         className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6"
         style={{ background: 'var(--black)', height: 56, boxShadow: '0 2px 10px rgba(0,0,0,.15)' }}

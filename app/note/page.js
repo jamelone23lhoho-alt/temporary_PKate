@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
@@ -26,7 +26,8 @@ export default function NotePage() {
   const [images, setImages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
-
+  const [isPending, startTransition] = useTransition();
+  const goBack = () => { startTransition(() => { router.push('/dashboard'); }); };
   useEffect(() => {
     const stored = sessionStorage.getItem('tolun_user');
     if (stored) setRole(JSON.parse(stored).role);
@@ -91,12 +92,12 @@ export default function NotePage() {
 
   return (
     <AppShell>
-      <LoadingOverlay show={saving} message="Saving..." />
+      <LoadingOverlay show={saving || isPending} message={isPending ? "Loading..." : "Saving..."} />
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <div className="fade-in">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-3">
-            <button onClick={() => router.push('/dashboard')} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}><span className="material-icons-outlined" style={{ fontSize: 20 }}>arrow_back</span></button>
+            <button onClick={goBack} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}><span className="material-icons-outlined" style={{ fontSize: 20 }}>arrow_back</span></button>
             Note
           </h2>
           {hasPermission(role, 'note_add') && <button onClick={openAdd} className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--black)' }}>+ Add Note</button>}

@@ -1,10 +1,11 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Toast from '@/components/Toast';
+import LoadingOverlay from '@/components/LoadingOverlay';
 import { hasPermission } from '@/lib/permissions';
 import { printClientPDF } from '@/components/PrintPDF';
 
@@ -33,6 +34,8 @@ export default function ClientPage() {
   const [form, setForm] = useState({});
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const goBack = () => { startTransition(() => { router.push('/dashboard'); }); };
 
   useEffect(() => {
     const stored = sessionStorage.getItem('tolun_user');
@@ -145,10 +148,11 @@ export default function ClientPage() {
 
   return (
     <AppShell>
+      <LoadingOverlay show={isPending} message="Loading..." />
       <div className="fade-in">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-3">
-            <button onClick={() => router.push('/dashboard')} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}>
+            <button onClick={goBack} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}>
               <span className="material-icons-outlined" style={{ fontSize: 20 }}>arrow_back</span>
             </button>
             Client

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
@@ -52,8 +52,8 @@ export default function ExportPage() {
   const [efEditing, setEfEditing] = useState(null);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const router = useRouter();
-
-  useEffect(() => { const s = sessionStorage.getItem('tolun_user'); if (s) setRole(JSON.parse(s).role); }, []);
+  const [isPending, startTransition] = useTransition();
+  const goBack = () => { startTransition(() => { router.push('/dashboard'); }); };  useEffect(() => { const s = sessionStorage.getItem('tolun_user'); if (s) setRole(JSON.parse(s).role); }, []);
 
   const loadData = useCallback(async () => { setLoading(true); const res = await fetch(`/api/exports?search=${search}`); const data = await res.json(); setExports(Array.isArray(data) ? data : []); setLoading(false); }, [search]);
   useEffect(() => { loadData(); }, [loadData]);
@@ -197,14 +197,14 @@ export default function ExportPage() {
 
   return (
     <AppShell>
-      <LoadingOverlay show={saving} message="Processing..." />
+      <LoadingOverlay show={saving || isPending} message={isPending ? "Loading..." : "Processing..."} />
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       {lightboxUrl && <div className="lightbox-overlay" onClick={() => setLightboxUrl(null)}><img src={lightboxUrl} alt="" /></div>}
 
       <div className="fade-in">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-3">
-            <button onClick={() => router.push('/dashboard')} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}><span className="material-icons-outlined" style={{ fontSize: 20 }}>arrow_back</span></button>
+            <button onClick={goBack} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}><span className="material-icons-outlined" style={{ fontSize: 20 }}>arrow_back</span></button>
             Export
           </h2>
           {hasPermission(role, 'export_add') && <button onClick={openAdd} className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:-translate-y-0.5" style={{ background: 'var(--black)' }}>+ Add Export</button>}
@@ -234,7 +234,6 @@ export default function ExportPage() {
 
       <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} title="Export Detail" footer={
         hasPermission(role, 'export_add') && current && <>
-          <button onClick={openBoxFormFromDetail} className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5" style={{ background: 'var(--latte)', color: 'white' }}><span className="material-icons-outlined" style={{ fontSize: 16 }}>add_box</span>Add Box</button>
           <button onClick={() => openExportForm(current)} className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5" style={{ background: 'var(--success)', color: 'white' }}><span className="material-icons-outlined" style={{ fontSize: 16 }}>receipt_long</span>Export Form</button>
           <button onClick={() => printExportPDF(current, detailBoxes)} className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5" style={{ border: '1.5px solid var(--info)', color: 'var(--info)' }}><span className="material-icons-outlined" style={{ fontSize: 16 }}>print</span>Print</button>
           <button onClick={() => openEdit(current)} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Edit</button>
@@ -253,13 +252,17 @@ export default function ExportPage() {
             </div>
           </div>
           <div className="mt-2"><div className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>Remark</div><div className="text-sm">{current.remark||'-'}</div></div>
-          {detailBoxes.length > 0 && <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-            <div className="text-sm font-bold mb-3" style={{ color: 'var(--danger)' }}>Boxes ({detailBoxes.length})</div>
+          <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-bold" style={{ color: 'var(--danger)' }}>Boxes ({detailBoxes.length})</div>
+              {hasPermission(role, 'export_add') && <button onClick={openBoxFormFromDetail} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1" style={{ background: 'var(--latte)' }}><span className="material-icons-outlined" style={{ fontSize: 14 }}>add_box</span>Add Box</button>}
+            </div>
+            {detailBoxes.length === 0 && <div className="text-center py-6" style={{ color: 'var(--text-muted)' }}><span className="material-icons-outlined block mb-1" style={{ fontSize: 32, color: 'var(--grey)' }}>inbox</span><span className="text-xs">No boxes yet</span></div>}
             {detailBoxes.map(b => <div key={b.id} onClick={() => { setCurrentBox(b); setBoxDetailOpen(true); }} className="p-3 rounded-lg mb-2 cursor-pointer transition-all hover:shadow-sm" style={{ background: 'var(--cream)', border: '1px solid var(--border)' }}>
               <div className="flex justify-between items-center"><span className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>{b.box_code||'No code'}</span><span className="text-xs" style={{ color: 'var(--text-muted)' }}>Dim: {b.dimension} | GW: {b.gross_weight}kg</span></div>
               <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{b.items?.item||'-'} | WR: {b.weight_result}kg</div>
             </div>)}
-          </div>}
+          </div>
         </div>}
       </Modal>
 

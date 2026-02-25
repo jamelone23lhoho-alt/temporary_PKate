@@ -1,4 +1,6 @@
 import './globals.css';
+import { Suspense } from 'react';
+import NavigationProgress from '@/components/NavigationProgress';
 
 export const metadata = {
   title: 'Tolun Logistics',
@@ -14,7 +16,12 @@ export default function RootLayout({ children }) {
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css" />
         <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
       </head>
-      <body>{children}</body>
+      <body>
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }
