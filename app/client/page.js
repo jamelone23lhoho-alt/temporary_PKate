@@ -6,6 +6,7 @@ import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Toast from '@/components/Toast';
 import { hasPermission } from '@/lib/permissions';
+import { printClientPDF } from '@/components/PrintPDF';
 
 function F({ label, req, children }) {
   return (
@@ -49,7 +50,6 @@ export default function ClientPage() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const emptyForm = () => ({
-    name:'', nationality:'', gender:'', contact_channel:'', contact_phone:'',
     supporter:'', remark:'', id_card_image:'', profile_image:'',
     sender_address:'', sender_phone:'', sender_image:'',
     recipient_address:'', recipient_phone:'', recipient_image:'',
@@ -61,7 +61,6 @@ export default function ClientPage() {
     setEditing(row);
     setForm({
       name: row.name||'', nationality: row.nationality||'', gender: row.gender||'',
-      contact_channel: row.contact_channel||'', contact_phone: row.contact_phone||'',
       supporter: row.supporter||'', remark: row.remark||'',
       id_card_image: row.id_card_image||'', profile_image: row.profile_image||'',
       sender_address: row.sender_address||'', sender_phone: row.sender_phone||'',
@@ -117,6 +116,8 @@ export default function ClientPage() {
     setDetailOpen(false);
     loadData();
   };
+
+
 
   const SectionTitle = ({ children }) => (
     <div className="text-sm font-bold mt-5 mb-3 pt-4 border-t" style={{ color: 'var(--danger)', borderColor: 'var(--border)' }}>{children}</div>
@@ -174,7 +175,7 @@ export default function ClientPage() {
             <table className="w-full border-collapse bg-white rounded-xl overflow-hidden">
               <thead>
                 <tr style={{ background: 'var(--cream)' }}>
-                  {['Code','Name','Nationality','Gender','Contact','Phone','Supporter'].map(h => (
+                  {['Code','Name','Nationality','Gender','Supporter'].map(h => (
                     <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: 'var(--text-muted)', borderBottom: '2px solid var(--border)' }}>{h}</th>
                   ))}
                 </tr>
@@ -186,8 +187,6 @@ export default function ClientPage() {
                     <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.name}</td>
                     <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.nationality || '-'}</td>
                     <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.gender || '-'}</td>
-                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.contact_channel || '-'}</td>
-                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.contact_phone || '-'}</td>
                     <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.supporter || '-'}</td>
                   </tr>
                 ))}
@@ -199,6 +198,9 @@ export default function ClientPage() {
 
       <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} title="Client Detail" footer={
         hasPermission(role, 'client_add') && current && <>
+          <button onClick={() => printClientPDF(current)} className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5" style={{ border: '1.5px solid var(--info)', color: 'var(--info)' }}>
+            <span className="material-icons-outlined" style={{ fontSize: 16 }}>print</span>Print
+          </button>
           <button onClick={() => openEdit(current)} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Edit</button>
           <button onClick={() => setConfirmOpen(true)} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--danger)' }}>Delete</button>
         </>
@@ -209,7 +211,6 @@ export default function ClientPage() {
               {[
                 ['Client Code', current.client_code, true], ['Name', current.name],
                 ['Nationality', current.nationality], ['Gender', current.gender],
-                ['Contact', current.contact_channel], ['Phone', current.contact_phone],
                 ['Supporter', current.supporter],
               ].map(([l,v,c]) => (
                 <div key={l}>
@@ -253,8 +254,6 @@ export default function ClientPage() {
             <option value="Other">Other</option>
           </select>
         </F>
-        <F label="Contact Channel"><input value={form.contact_channel} onChange={(e) => setForm({...form, contact_channel: e.target.value})} className={inputCls} style={inputStyle} /></F>
-        <F label="Contact Phone"><input value={form.contact_phone} onChange={(e) => setForm({...form, contact_phone: e.target.value})} className={inputCls} style={inputStyle} /></F>
         <F label="Supporter"><input value={form.supporter} onChange={(e) => setForm({...form, supporter: e.target.value})} className={inputCls} style={inputStyle} /></F>
         <F label="Remark"><textarea value={form.remark} onChange={(e) => setForm({...form, remark: e.target.value})} className={inputCls} style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} /></F>
 

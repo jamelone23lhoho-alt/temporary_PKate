@@ -6,6 +6,12 @@ import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Toast from '@/components/Toast';
 import { hasPermission } from '@/lib/permissions';
+import { printExportPDF } from '@/components/PrintPDF';
+import { printInvoicePDF } from '@/components/PrintPDF';
+
+const ITEM_TYPES = ['Everyday items','Medicine','electric equipment','clothes','food','Creamy liquid','Gel liquid','Water liquid','capsule','Powder','Water spray','balm liquid'];
+const PHOTO_FIELDS = ['received_package','items_in_box','box_and_weight','other_1','other_2'];
+const PHOTO_LABELS = {'received_package':'Received package','items_in_box':'Items in the box','box_and_weight':'Box and weight','other_1':'Other 1','other_2':'Other 2'};
 
 function F({ label, children }) {
   return (
@@ -15,6 +21,11 @@ function F({ label, children }) {
     </div>
   );
 }
+
+const inputCls = "w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all";
+const inputStyle = { border: '1.5px solid var(--border)' };
+const fmt = (n) => (parseFloat(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtD = (d) => { if (!d) return '-'; const dt = new Date(d); return isNaN(dt) ? d : `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`; };
 
 export default function ExportPage() {
   const [exports, setExports] = useState([]);
@@ -29,6 +40,18 @@ export default function ExportPage() {
   const [clients, setClients] = useState([]);
   const [role, setRole] = useState('');
   const [form, setForm] = useState({});
+  const [boxes, setBoxes] = useState([]);
+  const [boxModalOpen, setBoxModalOpen] = useState(false);
+  const [boxForm, setBoxForm] = useState({});
+  const [boxItems, setBoxItems] = useState([]);
+  const [boxPhotos, setBoxPhotos] = useState({});
+  const [editingBox, setEditingBox] = useState(null);
+  const [boxDetailOpen, setBoxDetailOpen] = useState(false);
+  const [currentBox, setCurrentBox] = useState(null);
+  const [detailBoxes, setDetailBoxes] = useState([]);
+  const [efModalOpen, setEfModalOpen] = useState(false);
+  const [efForm, setEfForm] = useState({});
+  const [efEditing, setEfEditing] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -52,6 +75,12 @@ export default function ExportPage() {
     setClients(Array.isArray(data) ? data : []);
   };
 
+  const loadBoxes = async (exportId) => {
+    const res = await fetch(`/api/boxes?export_id=${exportId}`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  };
+
   const openAdd = () => {
     setEditing(null);
     setForm({
@@ -59,9 +88,10 @@ export default function ExportPage() {
       export_date: new Date().toISOString().split('T')[0],
       mawb_no: '', item: '', sender: '', sender_phone: '',
       recipient: '', recipient_phone: '', remark: '',
-      total_boxs: '', total_gw: '', bill_thb: '', bill_mnt: '',
+      bill_thb: '', bill_mnt: '',
       payment: 'No', box_type: '',
     });
+    setBoxes([]);
     loadClients();
     setModalOpen(true);
   };
@@ -78,67 +108,189 @@ export default function ExportPage() {
       recipient: row.recipient || '',
       recipient_phone: row.recipient_phone || '',
       remark: row.remark || '',
-      total_boxs: row.total_boxs || '',
-      total_gw: row.total_gw || '',
       bill_thb: row.bill_thb || '',
       bill_mnt: row.bill_mnt || '',
       payment: row.payment || 'No',
       box_type: row.box_type || '',
     });
     loadClients();
+    loadBoxes(row.id).then(setBoxes);
     setDetailOpen(false);
     setModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!form.client) { setToast({ msg: 'Please select a client', type: 'error' }); return; }
+  const save = async () => {
+    if (!form.client) { setToast({ msg: 'Select a client', type: 'error' }); return; }
+    const totalBoxs = boxes.length;
+    const totalGw = boxes.reduce((sum, b) => sum + (parseFloat(b.gross_weight) || 0), 0);
+    const body = { ...form, total_boxs: totalBoxs, total_gw: totalGw };
+
+    let exportId;
     if (editing) {
-      await fetch('/api/exports', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editing.id, ...form }),
-      });
-      setToast({ msg: 'Export updated', type: 'success' });
+      await fetch('/api/exports', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...body }) });
+      exportId = editing.id;
     } else {
-      await fetch('/api/exports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      setToast({ msg: 'Export saved', type: 'success' });
+      const res = await fetch('/api/exports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await res.json();
+      exportId = d.id;
     }
+
+    for (const box of boxes) {
+      if (box.id && !box._new) {
+        await fetch('/api/boxes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(box) });
+      } else {
+        const { _new, id, ...rest } = box;
+        await fetch('/api/boxes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...rest, export_id: exportId }) });
+      }
+    }
+
+    setToast({ msg: editing ? 'Updated' : 'Saved', type: 'success' });
     setModalOpen(false);
     loadData();
   };
 
-  const handleDelete = async () => {
+  const deleteExport = async () => {
     await fetch(`/api/exports?id=${current.id}`, { method: 'DELETE' });
-    setToast({ msg: 'Export deleted', type: 'success' });
+    setToast({ msg: 'Deleted', type: 'success' });
     setConfirmOpen(false);
     setDetailOpen(false);
     loadData();
   };
 
-  const fmt = (n) => {
-    const v = parseFloat(n);
-    return isNaN(v) ? '-' : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const openDetail = async (row) => {
+    setCurrent(row);
+    const b = await loadBoxes(row.id);
+    setDetailBoxes(b);
+    setDetailOpen(true);
   };
 
-  const fmtDate = (d) => {
-    if (!d) return '-';
-    const dt = new Date(d);
-    return isNaN(dt) ? d : `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+  const openBoxForm = (box) => {
+    if (box) {
+      setEditingBox(box);
+      setBoxForm({ box_code: box.box_code || '', box_w: box.box_w || '', box_h: box.box_h || '', box_l: box.box_l || '', gross_weight: box.gross_weight || '', weight_result: box.weight_result || '' });
+      setBoxItems(box.items || []);
+      setBoxPhotos(box.photos || {});
+    } else {
+      setEditingBox(null);
+      setBoxForm({ box_code: '', box_w: '', box_h: '', box_l: '', gross_weight: '', weight_result: '' });
+      setBoxItems([]);
+      setBoxPhotos({});
+    }
+    setBoxModalOpen(true);
   };
 
-  const inputCls = "w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all";
-  const inputStyle = { border: '1.5px solid var(--border)' };
+  const calcDim = () => {
+    const w = parseFloat(boxForm.box_w) || 0;
+    const h = parseFloat(boxForm.box_h) || 0;
+    const l = parseFloat(boxForm.box_l) || 0;
+    return (w * h * l / 6000).toFixed(2);
+  };
+
+  const addItem = () => setBoxItems([...boxItems, { item: '', unit: '', type: '' }]);
+  const removeItem = (i) => setBoxItems(boxItems.filter((_, idx) => idx !== i));
+  const updateItem = (i, key, val) => { const arr = [...boxItems]; arr[i] = { ...arr[i], [key]: val }; setBoxItems(arr); };
+
+  const handlePhotoUpload = async (field, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.url) setBoxPhotos(prev => ({ ...prev, [field]: data.url }));
+  };
+
+  const saveBox = () => {
+    const dim = calcDim();
+    const boxData = {
+      ...boxForm,
+      dimension: parseFloat(dim),
+      items: boxItems,
+      photos: boxPhotos,
+    };
+
+    if (editingBox) {
+      setBoxes(boxes.map(b => (b === editingBox || b.id === editingBox.id) ? { ...editingBox, ...boxData } : b));
+    } else {
+      setBoxes([...boxes, { ...boxData, _new: true, id: `temp_${Date.now()}` }]);
+    }
+    setBoxModalOpen(false);
+  };
+
+  const removeBox = (box) => {
+    if (box.id && !box._new) {
+      fetch(`/api/boxes?id=${box.id}`, { method: 'DELETE' });
+    }
+    setBoxes(boxes.filter(b => b !== box));
+  };
+
+  const calcEfTotal = (f) => {
+    const ppk = parseFloat(f.price_per_kg) || 0;
+    const wr = parseFloat(f.weight_result) || 0;
+    const ppd = parseFloat(f.price_per_diff) || 0;
+    const wd = parseFloat(f.weight_diff) || 0;
+    return (ppk * wr + ppd * wd).toFixed(2);
+  };
+
+  const openExportForm = async (exp) => {
+    const efRes = await fetch(`/api/export-forms?export_id=${exp.id}`);
+    const efData = await efRes.json();
+    const existing = Array.isArray(efData) && efData.length > 0 ? efData[0] : null;
+    const wr = detailBoxes.reduce((s, b) => s + (parseFloat(b.weight_result) || 0), 0);
+
+    if (existing) {
+      setEfEditing(existing);
+      setEfForm({
+        export_id: exp.id, export_date: exp.export_date || '', order_code: exp.order_code || '',
+        client: exp.client || '', total_boxes: exp.total_boxs || 0, total_gw: exp.total_gw || 0,
+        weight_result: existing.weight_result || wr, weight_diff: existing.weight_diff || '',
+        price_per_kg: existing.price_per_kg || '', price_per_diff: existing.price_per_diff || '',
+        total_thb: existing.total_thb || '', total_mnt: existing.total_mnt || '',
+        type_box: existing.type_box || 'Personal',
+      });
+    } else {
+      setEfEditing(null);
+      setEfForm({
+        export_id: exp.id, export_date: exp.export_date || '', order_code: exp.order_code || '',
+        client: exp.client || '', total_boxes: exp.total_boxs || 0, total_gw: exp.total_gw || 0,
+        weight_result: wr, weight_diff: '', price_per_kg: '', price_per_diff: '',
+        total_thb: '', total_mnt: '', type_box: 'Personal',
+      });
+    }
+    setDetailOpen(false);
+    setEfModalOpen(true);
+  };
+
+  const updateEfField = (key, val) => {
+    const nf = { ...efForm, [key]: val };
+    if (['price_per_kg','weight_result','price_per_diff','weight_diff'].includes(key)) {
+      nf.total_thb = calcEfTotal(nf);
+    }
+    setEfForm(nf);
+  };
+
+  const saveExportForm = async () => {
+    const body = { ...efForm, total_thb: calcEfTotal(efForm) };
+    if (efEditing) {
+      await fetch('/api/export-forms', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: efEditing.id, ...body }) });
+    } else {
+      await fetch('/api/export-forms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    }
+    setToast({ msg: 'Export Form saved', type: 'success' });
+    setEfModalOpen(false);
+  };
+
+  const filtered = exports.filter(r =>
+    (r.order_code || '').toLowerCase().includes(search.toLowerCase()) ||
+    (r.client || '').toLowerCase().includes(search.toLowerCase()) ||
+    (r.remark || '').toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <AppShell>
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <div className="fade-in">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-3">
-            <button onClick={() => router.push('/dashboard')} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white transition-all hover:bg-cream" style={{ borderColor: 'var(--border)' }}>
+            <button onClick={() => router.push('/dashboard')} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}>
               <span className="material-icons-outlined" style={{ fontSize: 20 }}>arrow_back</span>
             </button>
             Export
@@ -153,47 +305,45 @@ export default function ExportPage() {
         <div className="relative mb-5">
           <span className="material-icons-outlined absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)', fontSize: 20 }}>search</span>
           <input
-            type="text"
-            value={search}
+            type="text" placeholder="Search tracking, client..." value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tracking, client, or status..."
             className={`${inputCls} pl-11`}
             style={{ ...inputStyle, background: 'var(--white)' }}
           />
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16" style={{ color: 'var(--text-muted)' }}>
-            <div className="spinner" /><div className="mt-3 text-sm">Loading data...</div>
+          <div className="flex flex-col items-center py-16 text-text-muted gap-3">
+            <div className="spinner" /><span className="text-sm">Loading...</span>
           </div>
-        ) : exports.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
             <span className="material-icons-outlined block mb-3" style={{ fontSize: 48, color: 'var(--grey)' }}>inventory_2</span>
-            <p className="text-sm">No export records found</p>
+            <p>No exports found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl shadow-sm">
-            <table className="w-full border-collapse bg-white rounded-xl overflow-hidden">
+          <div className="overflow-x-auto rounded-xl" style={{ boxShadow: '0 1px 3px rgba(0,0,0,.04)' }}>
+            <table className="w-full border-collapse rounded-xl overflow-hidden" style={{ background: 'white' }}>
               <thead>
-                <tr style={{ background: 'var(--cream)' }}>
-                  {['Export Date','Order Code','Client','Total Boxs','Total GW.','Bill THB','Bill MNT','Payment','Box Type','Remark'].map(h => (
-                    <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: 'var(--text-muted)', borderBottom: '2px solid var(--border)' }}>{h}</th>
+                <tr>
+                  {['Date','Order Code','Client','Boxs','GW.','Bill THB','Bill MNT','Payment','Box Type','Remark'].map(h => (
+                    <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: 'var(--text-muted)', borderBottom: '2px solid var(--border)', background: 'var(--cream)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {exports.map(row => (
-                  <tr key={row.id} onClick={() => { setCurrent(row); setDetailOpen(true); }} className="cursor-pointer transition-all hover:bg-cream" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{fmtDate(row.export_date)}</td>
-                    <td className="px-4 py-3.5 text-sm font-semibold" style={{ color: 'var(--danger)' }}>{row.order_code}</td>
-                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.client || '-'}</td>
-                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.total_boxs || '-'}</td>
-                    <td className="px-4 py-3.5 text-sm font-semibold" style={{ color: 'var(--success)' }}>{row.total_gw || '-'}</td>
-                    <td className="px-4 py-3.5 text-sm font-semibold" style={{ color: 'var(--success)' }}>{row.bill_thb ? fmt(row.bill_thb) : '-'}</td>
-                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.bill_mnt ? fmt(row.bill_mnt) : '-'}</td>
-                    <td className="px-4 py-3.5 text-sm font-semibold">{row.payment === 'Yes' ? <span style={{ color: 'var(--success)' }}>✓</span> : <span style={{ color: 'var(--danger)' }}>✕</span>}</td>
-                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.box_type || '-'}</td>
-                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{row.remark || '-'}</td>
+                {filtered.map(r => (
+                  <tr key={r.id} onClick={() => openDetail(r)} className="cursor-pointer transition-all hover:bg-cream" style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{fmtD(r.export_date)}</td>
+                    <td className="px-4 py-3.5 text-sm font-semibold" style={{ color: 'var(--danger)' }}>{r.order_code}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{r.client || '-'}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{r.total_boxs || '-'}</td>
+                    <td className="px-4 py-3.5 text-sm font-semibold" style={{ color: 'var(--success)' }}>{r.total_gw || '-'}</td>
+                    <td className="px-4 py-3.5 text-sm font-semibold" style={{ color: 'var(--success)' }}>{r.bill_thb ? fmt(r.bill_thb) : '-'}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{r.bill_mnt ? fmt(r.bill_mnt) : '-'}</td>
+                    <td className="px-4 py-3.5 text-sm">{r.payment === 'Yes' ? <span style={{ color: 'var(--success)' }}>✓</span> : <span style={{ color: 'var(--danger)' }}>✕</span>}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{r.box_type || '-'}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{r.remark || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -204,49 +354,96 @@ export default function ExportPage() {
 
       <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} title="Export Detail" footer={
         hasPermission(role, 'export_add') && current && <>
-          <button onClick={() => openEdit(current)} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Edit</button>
-          <button onClick={() => setConfirmOpen(true)} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--danger)' }}>Delete</button>
+          <button onClick={() => openExportForm(current)} className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5" style={{ background: 'var(--success)', color: 'white' }}>
+            <span className="material-icons-outlined" style={{ fontSize: 16 }}>receipt_long</span>Export Form
+          </button>
+          <button onClick={() => printExportPDF(current, detailBoxes)} className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5" style={{ border: '1.5px solid var(--info)', color: 'var(--info)' }}>
+            <span className="material-icons-outlined" style={{ fontSize: 16 }}>print</span>Print
+          </button>
+          <button onClick={() => openEdit(current)} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Edit</button>
+          <button onClick={() => { setConfirmOpen(true); }} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--danger)' }}>Delete</button>
         </>
       }>
         {current && (
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              ['Order Code', current.order_code, true],
-              ['Client', current.client],
-              ['Export Date', fmtDate(current.export_date)],
-              ['MAWB No', current.mawb_no],
-              ['Item', current.item],
-              ['Sender', current.sender],
-              ['Sender Phone', current.sender_phone],
-              ['Recipient', current.recipient],
-              ['Recipient Phone', current.recipient_phone],
-              ['Total Boxs', current.total_boxs],
-              ['Total GW', current.total_gw],
-              ['Bill THB', current.bill_thb ? fmt(current.bill_thb) : '-'],
-              ['Bill MNT', current.bill_mnt ? fmt(current.bill_mnt) : '-'],
-              ['Payment', current.payment],
-              ['Box Type', current.box_type],
-            ].map(([label, val, isCode]) => (
-              <div key={label}>
-                <div className="text-[11px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
-                <div className={`text-sm font-medium ${isCode ? 'font-semibold' : ''}`} style={{ color: isCode ? 'var(--danger)' : 'var(--text-primary)' }}>{val || '-'}</div>
-              </div>
-            ))}
-            <div className="col-span-2">
-              <div className="text-[11px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>Remark</div>
-              <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{current.remark || '-'}</div>
+          <div>
+            <div className="grid grid-cols-2 gap-3">
+              {[['Order Code', current.order_code, 'var(--danger)'], ['Client', current.client], ['Date', fmtD(current.export_date)], ['MAWB No', current.mawb_no], ['Item', current.item], ['Sender', current.sender], ['Sender Phone', current.sender_phone], ['Recipient', current.recipient], ['Recipient Phone', current.recipient_phone], ['Total Boxs', current.total_boxs], ['Total GW', current.total_gw], ['Bill THB', current.bill_thb ? fmt(current.bill_thb) : '-'], ['Bill MNT', current.bill_mnt ? fmt(current.bill_mnt) : '-'], ['Payment', current.payment], ['Box Type', current.box_type]].map(([l, v, c]) => (
+                <div key={l} className="mb-1">
+                  <div className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>{l}</div>
+                  <div className="text-sm font-medium" style={c ? { color: c, fontWeight: 600 } : {}}>{v || '-'}</div>
+                </div>
+              ))}
             </div>
+            <div className="mt-3">
+              <div className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>Remark</div>
+              <div className="text-sm">{current.remark || '-'}</div>
+            </div>
+
+            {detailBoxes.length > 0 && (
+              <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                <div className="text-sm font-bold mb-3" style={{ color: 'var(--danger)' }}>Boxes ({detailBoxes.length})</div>
+                {detailBoxes.map(b => (
+                  <div key={b.id} onClick={() => { setCurrentBox(b); setBoxDetailOpen(true); }} className="p-3 rounded-lg mb-2 cursor-pointer transition-all hover:shadow-sm" style={{ background: 'var(--cream)', border: '1px solid var(--border)' }}>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>{b.box_code || 'No code'}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Dim: {b.dimension} | GW: {b.gross_weight}kg</span>
+                    </div>
+                    <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                      {(b.items || []).length} items | WR: {b.weight_result}kg
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Modal>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Export' : 'Exports Form'} footer={
+      <Modal isOpen={boxDetailOpen} onClose={() => setBoxDetailOpen(false)} title="Box Detail">
+        {currentBox && (
+          <div>
+            <div className="grid grid-cols-2 gap-3">
+              {[['Box Code', currentBox.box_code, 'var(--danger)'], ['Size', `${currentBox.box_w}×${currentBox.box_h}×${currentBox.box_l} cm`], ['Dimension', currentBox.dimension], ['Gross Weight', `${currentBox.gross_weight} kg`], ['Weight Result', `${currentBox.weight_result} kg`]].map(([l, v, c]) => (
+                <div key={l} className="mb-1">
+                  <div className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>{l}</div>
+                  <div className="text-sm font-medium" style={c ? { color: c, fontWeight: 600 } : {}}>{v || '-'}</div>
+                </div>
+              ))}
+            </div>
+            {(currentBox.items || []).length > 0 && (
+              <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                <div className="text-sm font-bold mb-2">Items</div>
+                {currentBox.items.map((it, i) => (
+                  <div key={i} className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    {it.item} — {it.unit} unit(s) — {it.type}
+                  </div>
+                ))}
+              </div>
+            )}
+            {Object.keys(currentBox.photos || {}).filter(k => currentBox.photos[k]).length > 0 && (
+              <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                <div className="text-sm font-bold mb-2">Photos</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(currentBox.photos).filter(([,v]) => v).map(([k, v]) => (
+                    <div key={k}>
+                      <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{PHOTO_LABELS[k]}</div>
+                      <img src={v} className="w-full h-24 object-cover rounded-lg" alt="" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Export' : 'Add Export'} footer={
         <>
-          <button onClick={() => setModalOpen(false)} className="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Cancel</button>
-          <button onClick={handleSave} className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--latte)' }}>Save</button>
+          <button onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Cancel</button>
+          <button onClick={save} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--latte)' }}>Save</button>
         </>
       }>
-        {editing && <F label="Order Code"><input value={editing.order_code} readOnly className={`${inputCls}`} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>}
+        {editing && <F label="Order Code"><input value={editing.order_code} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>}
         <F label="Client *">
           {role === 'Origin Officer' ? (
             <input value="CTL000 (Unknown)" readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)' }} />
@@ -264,22 +461,126 @@ export default function ExportPage() {
         <F label="Sender Phone"><input value={form.sender_phone} onChange={(e) => setForm({...form, sender_phone: e.target.value})} className={inputCls} style={inputStyle} /></F>
         <F label="Recipient"><input value={form.recipient} onChange={(e) => setForm({...form, recipient: e.target.value})} className={inputCls} style={inputStyle} /></F>
         <F label="Recipient Phone"><input value={form.recipient_phone} onChange={(e) => setForm({...form, recipient_phone: e.target.value})} className={inputCls} style={inputStyle} /></F>
-        <F label="Total Boxs"><input type="number" value={form.total_boxs} onChange={(e) => setForm({...form, total_boxs: e.target.value})} className={inputCls} style={inputStyle} /></F>
-        <F label="Total GW."><input type="number" step="0.01" value={form.total_gw} onChange={(e) => setForm({...form, total_gw: e.target.value})} className={inputCls} style={inputStyle} /></F>
         <F label="Bill THB"><input type="number" step="0.01" value={form.bill_thb} onChange={(e) => setForm({...form, bill_thb: e.target.value})} className={inputCls} style={inputStyle} /></F>
         <F label="Bill MNT"><input type="number" step="0.01" value={form.bill_mnt} onChange={(e) => setForm({...form, bill_mnt: e.target.value})} className={inputCls} style={inputStyle} /></F>
         <F label="Payment">
           <select value={form.payment} onChange={(e) => setForm({...form, payment: e.target.value})} className={inputCls} style={inputStyle}>
-            <option value="No">No</option>
-            <option value="Yes">Yes</option>
+            <option value="No">No</option><option value="Yes">Yes</option>
           </select>
         </F>
         <F label="Box Type"><input value={form.box_type} onChange={(e) => setForm({...form, box_type: e.target.value})} className={inputCls} style={inputStyle} /></F>
         <F label="Remark"><textarea value={form.remark} onChange={(e) => setForm({...form, remark: e.target.value})} className={inputCls} style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} /></F>
+
+        <div className="mt-2 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-bold" style={{ color: 'var(--danger)' }}>Boxes ({boxes.length})</span>
+            <button onClick={() => openBoxForm(null)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ background: 'var(--latte)' }}>+ Add Box</button>
+          </div>
+          {boxes.map((b, i) => (
+            <div key={b.id || i} className="p-3 rounded-lg mb-2 flex justify-between items-center" style={{ background: 'var(--cream)', border: '1px solid var(--border)' }}>
+              <div>
+                <span className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>{b.box_code || `Box ${i+1}`}</span>
+                <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>Dim: {b.dimension} | GW: {b.gross_weight}kg</span>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => openBoxForm(b)} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--info)', color: 'white' }}>Edit</button>
+                <button onClick={() => removeBox(b)} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--danger)', color: 'white' }}>×</button>
+              </div>
+            </div>
+          ))}
+        </div>
       </Modal>
 
-      <ConfirmDialog isOpen={confirmOpen} title="Delete Export" message={`Are you sure you want to delete ${current?.order_code}?`} onConfirm={handleDelete} onCancel={() => setConfirmOpen(false)} />
-      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+      <Modal isOpen={boxModalOpen} onClose={() => setBoxModalOpen(false)} title={editingBox ? 'Edit Box' : 'Add Box'} footer={
+        <>
+          <button onClick={() => setBoxModalOpen(false)} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Cancel</button>
+          <button onClick={saveBox} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--latte)' }}>Save Box</button>
+        </>
+      }>
+        <F label="Box Code"><input value={boxForm.box_code} onChange={(e) => setBoxForm({...boxForm, box_code: e.target.value})} className={inputCls} style={inputStyle} /></F>
+
+        <div className="text-sm font-bold mt-4 mb-3 pt-3" style={{ color: 'var(--danger)', borderTop: '1px solid var(--border)' }}>
+          All Items
+          <button onClick={addItem} className="ml-3 text-xs px-2 py-0.5 rounded text-white" style={{ background: 'var(--latte)' }}>+ Add Item</button>
+        </div>
+        {boxItems.map((it, i) => (
+          <div key={i} className="p-3 rounded-lg mb-2" style={{ background: 'var(--cream)', border: '1px solid var(--border)' }}>
+            <div className="flex gap-2 mb-2">
+              <input placeholder="Item name" value={it.item} onChange={(e) => updateItem(i, 'item', e.target.value)} className={`${inputCls} flex-1`} style={inputStyle} />
+              <input placeholder="Unit" type="number" value={it.unit} onChange={(e) => updateItem(i, 'unit', e.target.value)} className={inputCls} style={{ ...inputStyle, width: 70 }} />
+            </div>
+            <div className="flex gap-2 items-center">
+              <select value={it.type} onChange={(e) => updateItem(i, 'type', e.target.value)} className={`${inputCls} flex-1`} style={inputStyle}>
+                <option value="">Select type</option>
+                {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <button onClick={() => removeItem(i)} className="text-xs px-2 py-1 rounded text-white" style={{ background: 'var(--danger)' }}>×</button>
+            </div>
+          </div>
+        ))}
+
+        <div className="text-sm font-bold mt-4 mb-3 pt-3" style={{ color: 'var(--danger)', borderTop: '1px solid var(--border)' }}>Box Size (cm.)</div>
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <div><label className="text-xs" style={{ color: 'var(--text-muted)' }}>W</label><input type="number" value={boxForm.box_w} onChange={(e) => setBoxForm({...boxForm, box_w: e.target.value})} className={inputCls} style={inputStyle} /></div>
+          <div><label className="text-xs" style={{ color: 'var(--text-muted)' }}>H</label><input type="number" value={boxForm.box_h} onChange={(e) => setBoxForm({...boxForm, box_h: e.target.value})} className={inputCls} style={inputStyle} /></div>
+          <div><label className="text-xs" style={{ color: 'var(--text-muted)' }}>L</label><input type="number" value={boxForm.box_l} onChange={(e) => setBoxForm({...boxForm, box_l: e.target.value})} className={inputCls} style={inputStyle} /></div>
+        </div>
+        <F label="Dimension (auto)"><input value={calcDim()} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>
+        <F label="Gross Weight (kg.)"><input type="number" step="0.01" value={boxForm.gross_weight} onChange={(e) => setBoxForm({...boxForm, gross_weight: e.target.value})} className={inputCls} style={inputStyle} /></F>
+        <F label="Weight Result (kg.)"><input type="number" step="0.01" value={boxForm.weight_result} onChange={(e) => setBoxForm({...boxForm, weight_result: e.target.value})} className={inputCls} style={inputStyle} /></F>
+
+        <div className="text-sm font-bold mt-4 mb-3 pt-3" style={{ color: 'var(--danger)', borderTop: '1px solid var(--border)' }}>Internal Photos</div>
+        {PHOTO_FIELDS.map(field => (
+          <div key={field} className="mb-3">
+            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>{PHOTO_LABELS[field]}</label>
+            {boxPhotos[field] ? (
+              <div className="relative inline-block">
+                <img src={boxPhotos[field]} className="max-h-20 rounded-lg" alt="" />
+                <button onClick={() => setBoxPhotos(prev => ({ ...prev, [field]: '' }))} className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full text-white text-xs flex items-center justify-center" style={{ background: 'var(--danger)' }}>×</button>
+              </div>
+            ) : (
+              <div onClick={() => document.getElementById(`bp-${field}`).click()} className="border-2 border-dashed rounded-lg p-3 text-center cursor-pointer text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <span className="material-icons-outlined" style={{ fontSize: 20, color: 'var(--grey)' }}>add_photo_alternate</span>
+              </div>
+            )}
+            <input id={`bp-${field}`} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files[0] && handlePhotoUpload(field, e.target.files[0])} />
+          </div>
+        ))}
+      </Modal>
+
+      <Modal isOpen={efModalOpen} onClose={() => setEfModalOpen(false)} title={efEditing ? 'Edit Export Form' : 'New Export Form'} footer={
+        <>
+          <button onClick={() => { setEfModalOpen(false); if(current) setDetailOpen(true); }} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Cancel</button>
+          <button onClick={saveExportForm} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--latte)' }}>Save</button>
+        </>
+      }>
+        <div className="text-xs font-bold uppercase tracking-wider mb-3 pb-2" style={{ color: 'var(--danger)', borderBottom: '1px solid var(--border)' }}>From Export (Read-only)</div>
+        <div className="grid grid-cols-2 gap-3 mb-2">
+          <F label="Export Date"><input value={efForm.export_date || ''} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>
+          <F label="Order Code"><input value={efForm.order_code || ''} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>
+        </div>
+        <F label="Client"><input value={efForm.client || ''} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>
+        <div className="grid grid-cols-3 gap-3">
+          <F label="Total Boxes"><input value={efForm.total_boxes || 0} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>
+          <F label="Total GW"><input value={efForm.total_gw || 0} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>
+          <F label="Weight Result"><input value={efForm.weight_result || 0} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>
+        </div>
+        <div className="text-xs font-bold uppercase tracking-wider mt-4 mb-3 pb-2" style={{ color: 'var(--success)', borderBottom: '1px solid var(--border)' }}>Pricing</div>
+        <div className="grid grid-cols-2 gap-3">
+          <F label="Weight Difference"><input type="number" step="0.01" value={efForm.weight_diff} onChange={(e) => updateEfField('weight_diff', e.target.value)} className={inputCls} style={inputStyle} /></F>
+          <F label="Price per kg"><input type="number" step="0.01" value={efForm.price_per_kg} onChange={(e) => updateEfField('price_per_kg', e.target.value)} className={inputCls} style={inputStyle} /></F>
+        </div>
+        <F label="Price per diff"><input type="number" step="0.01" value={efForm.price_per_diff} onChange={(e) => updateEfField('price_per_diff', e.target.value)} className={inputCls} style={inputStyle} /></F>
+        <F label="Total THB (auto)"><input value={calcEfTotal(efForm)} readOnly className={inputCls} style={{ ...inputStyle, background: 'var(--cream)', color: 'var(--text-muted)' }} /></F>
+        <F label="Total MNT"><input type="number" step="0.01" value={efForm.total_mnt} onChange={(e) => setEfForm({...efForm, total_mnt: e.target.value})} className={inputCls} style={inputStyle} /></F>
+        <F label="Type Box">
+          <select value={efForm.type_box} onChange={(e) => setEfForm({...efForm, type_box: e.target.value})} className={inputCls} style={inputStyle}>
+            {['Personal','Special1','Special2','Special3'].map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </F>
+      </Modal>
+
+      <ConfirmDialog isOpen={confirmOpen} title="Delete Export" message={`Delete ${current?.order_code}?`} onConfirm={deleteExport} onCancel={() => setConfirmOpen(false)} />
     </AppShell>
   );
 }

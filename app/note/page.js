@@ -6,6 +6,7 @@ import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Toast from '@/components/Toast';
 import { hasPermission } from '@/lib/permissions';
+import { printNotePDF } from '@/components/PrintPDF';
 
 export default function NotePage() {
   const [notes, setNotes] = useState([]);
@@ -98,6 +99,11 @@ export default function NotePage() {
     return isNaN(dt) ? d : `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
   };
 
+  const truncate = (str, len) => {
+    if (!str) return '-';
+    return str.length > len ? str.substring(0, len) + '...' : str;
+  };
+
   const inputCls = "w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-all";
   const inputStyle = { border: '1.5px solid var(--border)' };
 
@@ -129,26 +135,28 @@ export default function NotePage() {
             <p className="text-sm">No notes found</p>
           </div>
         ) : (
-          notes.map(note => (
-            <div
-              key={note.id}
-              onClick={() => { setCurrent(note); setDetailOpen(true); }}
-              className="bg-white rounded-xl p-5 mb-3 cursor-pointer transition-all hover:shadow-sm"
-              style={{ border: '1px solid var(--border)' }}
-            >
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>{note.topic}</span>
-                <span className="px-3 py-1 rounded-full text-[11px] font-semibold" style={{ background: 'var(--beige)', color: 'var(--accent)' }}>{note.type}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {notes.map(note => (
+              <div
+                key={note.id}
+                onClick={() => { setCurrent(note); setDetailOpen(true); }}
+                className="bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5"
+                style={{ border: '1px solid var(--border)' }}
+              >
+                <div className="text-[11px] font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{fmtDate(note.date)}</div>
+                <div className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{truncate(note.topic, 25)}</div>
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{truncate(note.description, 20)}</div>
               </div>
-              <div className="text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>{fmtDate(note.date)}</div>
-              <div className="text-sm line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{note.description}</div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
       <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} title="Note Detail" footer={
         hasPermission(role, 'note_add') && current && <>
+          <button onClick={() => printNotePDF(current)} className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5" style={{ border: '1.5px solid var(--info)', color: 'var(--info)' }}>
+            <span className="material-icons-outlined" style={{ fontSize: 16 }}>print</span>Print
+          </button>
           <button onClick={() => openEdit(current)} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}>Edit</button>
           <button onClick={() => setConfirmOpen(true)} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--danger)' }}>Delete</button>
         </>

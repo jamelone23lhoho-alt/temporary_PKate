@@ -4,38 +4,74 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { hasPermission } from '@/lib/permissions';
 
+const fmt = (n) => (parseFloat(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function DashboardPage() {
   const [totalTHB, setTotalTHB] = useState(0);
   const [totalMNT, setTotalMNT] = useState(0);
-  const [filterType, setFilterType] = useState('Month');
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [client, setClient] = useState('');
+  const [clients, setClients] = useState([]);
   const [role, setRole] = useState('');
   const router = useRouter();
 
   useEffect(() => {
     const stored = sessionStorage.getItem('tolun_user');
     if (stored) setRole(JSON.parse(stored).role);
+    loadClients();
   }, []);
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    loadDash();
+  }, [dateFrom, dateTo, client]);
 
-  const loadDashboard = async () => {
-    const res = await fetch(`/api/dashboard?type=${filterType}&date=${filterDate}`);
+  const loadClients = async () => {
+    const res = await fetch('/api/clients');
+    const data = await res.json();
+    setClients(Array.isArray(data) ? data : []);
+  };
+
+  const loadDash = async () => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('from', dateFrom);
+    if (dateTo) params.set('to', dateTo);
+    if (client) params.set('client', client);
+    const res = await fetch(`/api/dashboard?${params}`);
     const data = await res.json();
     setTotalTHB(data.totalTHB || 0);
     setTotalMNT(data.totalMNT || 0);
   };
 
-  const fmt = (n) => parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const resetFilter = () => {
+    setDateFrom('');
+    setDateTo('');
+    setClient('');
+  };
 
   const quickItems = [
     { label: 'Export', icon: 'local_shipping', path: '/export', perm: 'export_view' },
+    { label: 'Export Form', icon: 'receipt_long', path: '/export-form', perm: 'export_view' },
     { label: 'Client', icon: 'people', path: '/client', perm: 'client_view' },
     { label: 'Note', icon: 'description', path: '/note', perm: 'note_view' },
     { label: 'Users', icon: 'admin_panel_settings', path: '/users', perm: 'users_view' },
   ];
+
+  const cardStyle = {
+    padding: 24,
+    borderRadius: 12,
+    borderLeft: '4px solid',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+  };
+
+  const inputStyle = {
+    padding: '8px 14px',
+    border: '1.5px solid var(--border)',
+    borderRadius: 8,
+    fontSize: 13,
+    background: 'white',
+    outline: 'none',
+  };
 
   return (
     <AppShell>
@@ -45,38 +81,47 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3 mb-5 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>From</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>To</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
           <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 rounded-lg text-sm outline-none"
-            style={{ border: '1.5px solid var(--border)', background: 'var(--white)' }}
+            value={client}
+            onChange={(e) => setClient(e.target.value)}
+            style={inputStyle}
           >
-            <option value="Month">Month</option>
-            <option value="Day">Day</option>
-            <option value="Year">Year</option>
+            <option value="">All Clients</option>
+            {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
-          <input
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="px-4 py-2 rounded-lg text-sm outline-none"
-            style={{ border: '1.5px solid var(--border)', background: 'var(--white)' }}
-          />
           <button
-            onClick={loadDashboard}
-            className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:-translate-y-0.5"
-            style={{ background: 'var(--black)' }}
+            onClick={resetFilter}
+            className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:-translate-y-0.5"
+            style={{ background: 'var(--latte)', color: 'white' }}
           >
-            Filter
+            All
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="p-6 rounded-xl border-l-4" style={{ background: 'var(--info-light)', borderColor: 'var(--info)' }}>
+          <div style={{ ...cardStyle, borderColor: 'var(--info)', background: 'white' }}>
             <div className="text-sm font-semibold mb-2" style={{ color: 'var(--info)' }}>Total Sales (THB)</div>
             <div className="text-3xl font-bold" style={{ color: 'var(--black)' }}>{fmt(totalTHB)}</div>
           </div>
-          <div className="p-6 rounded-xl border-l-4" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+          <div style={{ ...cardStyle, borderColor: 'var(--danger)', background: 'white' }}>
             <div className="text-sm font-semibold mb-2" style={{ color: 'var(--danger)' }}>Total Sales (MNT)</div>
             <div className="text-3xl font-bold" style={{ color: 'var(--black)' }}>{fmt(totalMNT)}</div>
           </div>
@@ -89,11 +134,11 @@ export default function DashboardPage() {
               <div
                 key={item.label}
                 onClick={() => router.push(item.path)}
-                className="bg-white rounded-xl p-6 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md"
-                style={{ border: '1.5px solid var(--border)' }}
+                className="rounded-xl p-6 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md"
+                style={{ background: 'white', border: '1.5px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
               >
                 <div
-                  className="w-13 h-13 rounded-full flex items-center justify-center mx-auto mb-3"
+                  className="rounded-full flex items-center justify-center mx-auto mb-3"
                   style={{ background: 'var(--beige)', width: 52, height: 52, color: 'var(--accent)' }}
                 >
                   <span className="material-icons-outlined" style={{ fontSize: 24 }}>{item.icon}</span>
