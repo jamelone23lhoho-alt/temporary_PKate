@@ -10,11 +10,12 @@ export default function Modal({ isOpen, onClose, title, children, footer }) {
       onClick={onClose}
     >
       <div
-        className="modal-animate bg-white rounded-2xl w-[90%] max-w-[520px] max-h-[85vh] overflow-y-auto shadow-xl"
+        className="modal-animate bg-white w-full max-w-[520px] max-h-[85vh] overflow-y-auto shadow-xl sm:rounded-2xl sm:w-[90%]"
+        style={{ maxHeight: '100vh' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b sticky top-0 bg-white rounded-t-2xl z-10" style={{ borderColor: 'var(--border)' }}>
-          <h3 className="text-lg font-bold">{title}</h3>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b sticky top-0 bg-white sm:rounded-t-2xl z-10" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-base sm:text-lg font-bold">{title}</h3>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
@@ -23,9 +24,9 @@ export default function Modal({ isOpen, onClose, title, children, footer }) {
             <span className="material-icons-outlined" style={{ fontSize: 18 }}>close</span>
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-4 sm:px-6 py-4 sm:py-5">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-3 px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-2xl" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex flex-wrap justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t sticky bottom-0 bg-white sm:rounded-b-2xl" style={{ borderColor: 'var(--border)' }}>
             {footer}
           </div>
         )}

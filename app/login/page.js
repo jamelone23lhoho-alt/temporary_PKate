@@ -35,7 +35,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg)' }}>
-      <form onSubmit={handleLogin} className="bg-white rounded-2xl p-12 w-full max-w-md shadow-lg text-center">
+      <form onSubmit={handleLogin} className="bg-white rounded-2xl p-8 sm:p-12 w-full max-w-md mx-3 sm:mx-0 shadow-lg text-center">
         <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--black)' }}>Tolun Logistics</h1>
         <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>Sign in to your account</p>
 

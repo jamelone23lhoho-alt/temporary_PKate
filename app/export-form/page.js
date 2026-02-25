@@ -113,8 +113,8 @@ export default function ExportFormPage() {
       <LoadingOverlay show={saving || isPending} message={isPending ? "Loading..." : "Processing..."} />
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <div className="fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-3">
             <button onClick={goBack} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}><span className="material-icons-outlined" style={{ fontSize: 20 }}>arrow_back</span></button>
             Export Form
           </h2>
@@ -188,7 +188,7 @@ export default function ExportFormPage() {
         </>
       }>
         {current && (<div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[['Order Code', current.order_code, 'var(--danger)'],['Client', current.client],['Export Date', fmtD(current.export_date)],['Total Boxes', current.total_boxes],['Total GW', fmt(current.total_gw)+' kg'],['Weight Result', fmt(current.weight_result)+' kg'],['Weight Diff', fmt(current.weight_diff)+' kg'],['Price/kg', fmt(current.price_per_kg)],['Price/diff', fmt(current.price_per_diff)],['Type Box', current.type_box]].map(([l,v,c]) => (
               <div key={l} className="mb-1"><div className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>{l}</div><div className="text-sm font-medium" style={c ? { color: c, fontWeight: 600 } : {}}>{v || '-'}</div></div>
             ))}
@@ -216,7 +216,7 @@ export default function ExportFormPage() {
           <F label="Weight Result"><input value={form.weight_result || 0} readOnly className={inputCls} style={roStyle} /></F>
         </div>
         <div className="text-xs font-bold uppercase tracking-wider mt-4 mb-3 pb-2" style={{ color: 'var(--success)', borderBottom: '1px solid var(--border)' }}>Pricing</div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <F label="Weight Difference"><input type="number" step="0.01" value={form.weight_diff} onChange={(e) => updateFormField('weight_diff', e.target.value)} className={inputCls} style={inputStyle} /></F>
           <F label="Price per kg"><input type="number" step="0.01" value={form.price_per_kg} onChange={(e) => updateFormField('price_per_kg', e.target.value)} className={inputCls} style={inputStyle} /></F>
         </div>

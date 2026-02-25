@@ -62,22 +62,24 @@ export default function DashboardPage() {
     <AppShell>
       <LoadingOverlay show={isPending} message="Loading..." />
       <div className="fade-in">
-        <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Dashboard</h2>
 
-        <div className="flex items-center gap-3 mb-5 flex-wrap">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-5">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>From</span>
-            <div style={{ width: 160 }}><DatePicker value={dateFrom} onChange={setDateFrom} placeholder="Start date" /></div>
+            <div className="flex-1 sm:flex-none" style={{ width: 'auto', minWidth: 140 }}><DatePicker value={dateFrom} onChange={setDateFrom} placeholder="Start date" /></div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>To</span>
-            <div style={{ width: 160 }}><DatePicker value={dateTo} onChange={setDateTo} placeholder="End date" /></div>
+            <div className="flex-1 sm:flex-none" style={{ width: 'auto', minWidth: 140 }}><DatePicker value={dateTo} onChange={setDateTo} placeholder="End date" /></div>
           </div>
-          <select value={client} onChange={(e) => setClient(e.target.value)} className="px-3.5 py-2.5 rounded-lg text-sm outline-none" style={{ border: '1.5px solid var(--border)', background: 'white' }}>
-            <option value="">All Clients</option>
-            {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
-          <button onClick={resetFilter} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:-translate-y-0.5" style={{ background: 'var(--latte)', color: 'white' }}>Reset</button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select value={client} onChange={(e) => setClient(e.target.value)} className="px-3.5 py-2.5 rounded-lg text-sm outline-none flex-1 sm:flex-none" style={{ border: '1.5px solid var(--border)', background: 'white' }}>
+              <option value="">All Clients</option>
+              {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+            <button onClick={resetFilter} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:-translate-y-0.5 whitespace-nowrap" style={{ background: 'var(--latte)', color: 'white' }}>Reset</button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -92,12 +94,12 @@ export default function DashboardPage() {
         </div>
 
         <h3 className="text-base font-bold mb-4">Quick Access</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3.5">
           {quickItems.map(item => (
             hasPermission(role, item.perm) && (
-              <div key={item.label} onClick={() => goTo(item.path)} className="rounded-xl p-6 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md" style={{ background: 'white', border: '1.5px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                <div className="rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--beige)', width: 52, height: 52, color: 'var(--accent)' }}>
-                  <span className="material-icons-outlined" style={{ fontSize: 24 }}>{item.icon}</span>
+              <div key={item.label} onClick={() => goTo(item.path)} className="rounded-xl p-4 sm:p-6 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md" style={{ background: 'white', border: '1.5px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div className="rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3" style={{ background: 'var(--beige)', width: 44, height: 44, color: 'var(--accent)' }}>
+                  <span className="material-icons-outlined" style={{ fontSize: 22 }}>{item.icon}</span>
                 </div>
                 <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
               </div>

@@ -202,8 +202,8 @@ export default function ExportPage() {
       {lightboxUrl && <div className="lightbox-overlay" onClick={() => setLightboxUrl(null)}><img src={lightboxUrl} alt="" /></div>}
 
       <div className="fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-3">
             <button onClick={goBack} className="w-9 h-9 rounded-full border flex items-center justify-center bg-white" style={{ borderColor: 'var(--border)' }}><span className="material-icons-outlined" style={{ fontSize: 20 }}>arrow_back</span></button>
             Export
           </h2>
@@ -241,7 +241,7 @@ export default function ExportPage() {
         </>
       }>
         {current && <div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[['Order Code',current.order_code,'var(--danger)'],['Client',current.client],['Date',fmtD(current.export_date)],['MAWB No',current.mawb_no],['Item',current.item],['Sender',current.sender],['Sender Phone',current.sender_phone],['Recipient',current.recipient],['Recipient Phone',current.recipient_phone],['Total Boxs',current.total_boxs],['Total GW',current.total_gw],['Bill THB',current.bill_thb ? fmt(current.bill_thb) : '-'],['Bill MNT',current.bill_mnt ? fmt(current.bill_mnt) : '-'],['Box Type',current.box_type]].map(([l,v,c]) => <div key={l} className="mb-1"><div className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>{l}</div><div className="text-sm font-medium" style={c ? { color: c, fontWeight: 600 } : {}}>{v||'-'}</div></div>)}
           </div>
           <div className="mb-3 mt-3">
@@ -268,7 +268,7 @@ export default function ExportPage() {
 
       <Modal isOpen={boxDetailOpen} onClose={() => setBoxDetailOpen(false)} title="Box Detail">
         {currentBox && <div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[['Box Code',currentBox.box_code,'var(--danger)'],['Size',`${currentBox.box_w}×${currentBox.box_h}×${currentBox.box_l} cm`],['Dimension',currentBox.dimension],['Gross Weight',`${currentBox.gross_weight} kg`],['Weight Result',`${currentBox.weight_result} kg`]].map(([l,v,c]) => <div key={l} className="mb-1"><div className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-muted)' }}>{l}</div><div className="text-sm font-medium" style={c ? { color: c, fontWeight: 600 } : {}}>{v||'-'}</div></div>)}
           </div>
           {currentBox.items && currentBox.items.item && <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}><div className="text-sm font-bold mb-2">Item</div><div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{currentBox.items.item} — {currentBox.items.unit} unit(s) — {currentBox.items.type}</div></div>}
@@ -353,9 +353,9 @@ export default function ExportPage() {
         <div className="text-xs font-bold uppercase tracking-wider mb-3 pb-2" style={{ color: 'var(--danger)', borderBottom: '1px solid var(--border)' }}>From Export (Read-only)</div>
         <div className="grid grid-cols-2 gap-3 mb-2"><F label="Export Date"><input value={fmtD(efForm.export_date)} readOnly className={inputCls} style={roStyle} /></F><F label="Order Code"><input value={efForm.order_code||''} readOnly className={inputCls} style={roStyle} /></F></div>
         <F label="Client"><input value={efForm.client||''} readOnly className={inputCls} style={roStyle} /></F>
-        <div className="grid grid-cols-3 gap-3"><F label="Total Boxes"><input value={efForm.total_boxes||0} readOnly className={inputCls} style={roStyle} /></F><F label="Total GW"><input value={efForm.total_gw||0} readOnly className={inputCls} style={roStyle} /></F><F label="Weight Result"><input value={efForm.weight_result||0} readOnly className={inputCls} style={roStyle} /></F></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><F label="Total Boxes"><input value={efForm.total_boxes||0} readOnly className={inputCls} style={roStyle} /></F><F label="Total GW"><input value={efForm.total_gw||0} readOnly className={inputCls} style={roStyle} /></F><F label="Weight Result"><input value={efForm.weight_result||0} readOnly className={inputCls} style={roStyle} /></F></div>
         <div className="text-xs font-bold uppercase tracking-wider mt-4 mb-3 pb-2" style={{ color: 'var(--success)', borderBottom: '1px solid var(--border)' }}>Pricing</div>
-        <div className="grid grid-cols-2 gap-3"><F label="Weight Difference"><input type="number" step="0.01" value={efForm.weight_diff} onChange={(e) => updateEfField('weight_diff', e.target.value)} className={inputCls} style={inputStyle} /></F><F label="Price per kg"><input type="number" step="0.01" value={efForm.price_per_kg} onChange={(e) => updateEfField('price_per_kg', e.target.value)} className={inputCls} style={inputStyle} /></F></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><F label="Weight Difference"><input type="number" step="0.01" value={efForm.weight_diff} onChange={(e) => updateEfField('weight_diff', e.target.value)} className={inputCls} style={inputStyle} /></F><F label="Price per kg"><input type="number" step="0.01" value={efForm.price_per_kg} onChange={(e) => updateEfField('price_per_kg', e.target.value)} className={inputCls} style={inputStyle} /></F></div>
         <F label="Price per diff"><input type="number" step="0.01" value={efForm.price_per_diff} onChange={(e) => updateEfField('price_per_diff', e.target.value)} className={inputCls} style={inputStyle} /></F>
         <F label="Total THB (auto)"><input value={calcEfTotal(efForm)} readOnly className={inputCls} style={roStyle} /></F>
         <F label="Total MNT"><input type="number" step="0.01" value={efForm.total_mnt} onChange={(e) => setEfForm({...efForm, total_mnt: e.target.value})} className={inputCls} style={inputStyle} /></F>
